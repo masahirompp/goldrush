@@ -25,4 +25,7 @@ class SystemLog < ActiveRecord::Base
     SystemLog.put('info', code, title, contents, user, sub_type, tags)
   end
 
+  def SystemLog.warn(code, title, contents, user, sub_type = nil, tags = [])
+    SystemLog.put('warn', code, title, contents, user, sub_type, tags)
+  end
 end

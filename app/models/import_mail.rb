@@ -27,11 +27,12 @@ class ImportMail < ActiveRecord::Base
   #  m   : 取り込むMailオブジェクト
   #  src : 取り込むメールのソーステキスト
   def ImportMail.import_mail(m, src)
+    now = Time.now
     ActiveRecord::Base::transaction do
       import_mail = ImportMail.new
       
       import_mail.in_reply_to = m.in_reply_to if m.in_reply_to
-      import_mail.received_at = m.date.blank? ? Time.now : m.date
+      import_mail.received_at = m.date.blank? ? now : m.date
       subject = tryConv(m, 'Subject') { m.subject }
       import_mail.mail_subject = subject.blank? ? 'unknown subject' : subject
       import_mail.mail_from = m.from != nil ? m.from[0].to_s : "unknown"
@@ -45,6 +46,12 @@ class ImportMail < ActiveRecord::Base
       import_mail.mail_bcc = tryConv(m,'Bcc')
       import_mail.message_source = src
       import_mail.message_id = m.message_id
+     
+      if ImportMail.where(message_id: import_mail.message_id, deleted: 0).first || ImportMail.where(mail_from: import_mail.mail_from, mail_subject: import_mail.mail_subject,received_at: ((now - 1.day) .. now), deleted: 0).first
+        puts "mail duplicated: see system_logs"
+        SystemLog.warn('import mail', 'mail duplicated', import_mail.inspect , 'import mail')
+        return
+      end
       
       # attempt_fileのため(import_mail_idが必要)に一旦登録
       import_mail.save!
